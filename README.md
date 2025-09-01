@@ -29,8 +29,7 @@
 1.  با `root` به سرور خود SSH بزنید.
 2.  این مخزن را روی سرور خود Clone کنید:
     ```bash
-    git clone [آدرس ریپازیتوری گیت‌هاب شما]
-    cd [نام پوشه ریپازیتوری]
+    git clone https://github.com/WebCodex-ir/Ubuntu-WordPress-Boilerplate.git
     ```
 3.  به اسکریپت دسترسی اجرایی بدهید:
     ```bash
