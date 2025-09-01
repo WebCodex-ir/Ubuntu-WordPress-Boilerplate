@@ -28,6 +28,7 @@
 2.  این مخزن را روی سرور خود Clone کنید:
     ```bash
     git clone https://github.com/WebCodex-ir/Ubuntu-WordPress-Boilerplate.git
+    cd Ubuntu-WordPress-Boilerplate
     ```
 3.  به اسکریپت دسترسی اجرایی بدهید:
     ```bash
