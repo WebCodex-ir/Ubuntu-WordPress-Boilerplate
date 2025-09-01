@@ -5,9 +5,6 @@
 #   Installs a secure, optimized, and full-featured server for WordPress.
 #   Stack: Apache2, MariaDB, PHP, Redis, SSL, Brotli, WAF, SFTP
 #   OS: Ubuntu 24.04 LTS
-#   Author: Gemini & a very patient user
-#
-#   This script is battle-hardened and designed to work on the first run.
 # =================================================================
 
 # --- Configuration ---
@@ -16,29 +13,21 @@ LOG_FILE="/var/log/wordpress_install_$(date +%F_%H-%M-%S).log"
 # --- Redirect all output to log file and console ---
 exec &> >(tee -a "$LOG_FILE")
 
-# --- Colors for better output ---
-C_RESET='\033[0m'
-C_RED='\033[0;31m'
-C_GREEN='\033[0;32m'
-C_BLUE='\033[0;34m'
-C_YELLOW='\033[1;33m'
-
 # --- Helper Functions ---
 function print_msg() {
-    echo -e "\n${C_BLUE}====================================================${C_RESET}"
-    echo -e "${C_GREEN}$1${C_RESET}"
-    echo -e "${C_BLUE}====================================================${C_RESET}"
+    echo -e "\n\033[0;34m====================================================\033[0m"
+    echo -e "\033[0;32m$1\033[0m"
+    echo -e "\033[0;34m====================================================\033[0m"
 }
 
 function error_exit() {
-    echo -e "\n${C_RED}####################################################${C_RESET}"
-    echo -e "${C_RED}# ERROR: $1${C_RESET}"
-    echo -e "${C_RED}# Installation failed. See log for details: ${LOG_FILE}${C_RESET}"
-    echo -e "${C_RED}####################################################${C_RESET}"
+    echo -e "\n\033[0;31m####################################################\033[0m"
+    echo -e "\033[0;31m# ERROR: $1\033[0m"
+    echo -e "\033[0;31m# Installation failed. See log for details: ${LOG_FILE}\033[0m"
+    echo -e "\033[0;31m####################################################\033[0m"
     exit 1
 }
 
-# --- Script Start ---
 # --- Root check ---
 if [[ $EUID -ne 0 ]]; then
    error_exit "This script must be run as root. Please use 'sudo ./install.sh'"
@@ -54,21 +43,12 @@ echo
 read -p "Enter your admin email (for SSL certificate): " ADMIN_EMAIL
 
 # --- Confirmation ---
-echo -e "\n${C_YELLOW}Please confirm your details:${C_RESET}"
-echo "------------------------------------"
-echo -e "Domain: ${C_GREEN}${DOMAIN_NAME}${C_RESET}"
-echo -e "Database Name: ${C_GREEN}${DB_NAME}${C_RESET}"
-echo -e "Database User: ${C_GREEN}${DB_USER}${C_RESET}"
-echo -e "Database Password: ${C_GREEN}[Hidden]${C_RESET}"
-echo -e "Admin Email for SSL: ${C_GREEN}${ADMIN_EMAIL}${C_RESET}"
-echo "------------------------------------"
 read -p "Is this correct? (y/n): " CONFIRM
-
 if [[ "$CONFIRM" != "y" ]]; then
     error_exit "Installation cancelled by user."
 fi
 
-# --- PHASE 1: System Preparation ---
+# --- PHASE 1: System Preparation & Core Stack Installation ---
 print_msg "PHASE 1: Preparing System and Installing All Dependencies..."
 apt-get update && apt-get upgrade -y || error_exit "System update/upgrade failed."
 apt-get install -y git unzip software-properties-common curl apache2 mariadb-server \
@@ -78,7 +58,7 @@ apt-get install -y git unzip software-properties-common curl apache2 mariadb-ser
                    || error_exit "Failed to install required packages. Check apt logs."
 
 # --- PHASE 2: Performance & Security Configuration ---
-print_msg "PHASE 2: Configuring Performance (Brotli) and Security (WAF, Firewall)..."
+print_msg "PHASE 2: Configuring Performance and Security..."
 a2enmod rewrite headers expires brotli ssl || error_exit "Failed to enable essential Apache modules."
 
 # Configure Brotli
@@ -96,21 +76,6 @@ ufw allow ssh
 ufw allow http
 ufw allow https
 ufw --force enable
-
-# Configure ModSecurity (WAF)
-mv /etc/modsecurity/modsecurity.conf-recommended /etc/modsecurity/modsecurity.conf
-sed -i 's/SecRuleEngine DetectionOnly/SecRuleEngine On/' /etc/modsecurity/modsecurity.conf
-git clone https://github.com/coreruleset/coreruleset /usr/share/modsecurity-crs --quiet
-mv /usr/share/modsecurity-crs/crs-setup.conf.example /usr/share/modsecurity-crs/crs-setup.conf
-cat << EOF >> /etc/apache2/mods-enabled/security2.conf
-<IfModule security2_module>
-    IncludeOptional /usr/share/modsecurity-crs/crs-setup.conf
-    IncludeOptional /usr/share/modsecurity-crs/rules/*.conf
-</IfModule>
-EOF
-# Test Apache config before restarting
-apachectl configtest || error_exit "ModSecurity WAF configuration failed. To fix, run 'sudo a2dismod security2' and restart Apache."
-systemctl restart apache2 || error_exit "Failed to restart Apache after WAF configuration."
 
 # --- PHASE 3: Database and Redis Setup ---
 print_msg "PHASE 3: Configuring Database and Redis..."
@@ -154,7 +119,7 @@ a2ensite ${DOMAIN_NAME}.conf && a2dissite 000-default.conf && systemctl reload a
 SERVER_IP=$(curl -s ifconfig.me)
 DOMAIN_IP=$(dig +short $DOMAIN_NAME)
 if [ "$SERVER_IP" != "$DOMAIN_IP" ]; then
-    error_exit "DNS Validation Failed! Domain '${DOMAIN_NAME}' does not point to this server's IP '${SERVER_IP}'. It points to '${DOMAIN_IP}'. Please update your DNS A record and wait a few minutes."
+    error_exit "DNS Validation Failed! Domain '${DOMAIN_NAME}' does not point to this server's IP '${SERVER_IP}'. It points to '${DOMAIN_IP}'."
 fi
 certbot --apache -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} --non-interactive --agree-tos -m ${ADMIN_EMAIL} --redirect || error_exit "Certbot failed to obtain the SSL certificate."
 
@@ -172,16 +137,16 @@ find ${WEB_ROOT} -type d -exec chmod 755 {} \;
 find ${WEB_ROOT} -type f -exec chmod 644 {} \;
 
 # --- All Done ---
-print_msg "✅ VICTORY! Your Professional WordPress Server is Ready."
-echo -e "${C_YELLOW}You can now visit your site to complete the WordPress installation.${C_RESET}"
+print_msg "✅ SUCCESS! Your Professional WordPress Server is Ready."
+echo -e "You can now visit your site to complete the WordPress installation."
 echo "--------------------------------------------------"
-echo -e "Site URL: ${C_GREEN}https://${DOMAIN_NAME}${C_RESET}"
-echo -e "SFTP/SSH Host: ${C_GREEN}${SERVER_IP}${C_RESET}"
-echo -e "SFTP/SSH User: ${C_GREEN}root${C_RESET}"
+echo -e "Site URL: https://${DOMAIN_NAME}"
+echo -e "SFTP/SSH Host: ${SERVER_IP}"
+echo -e "SFTP/SSH User: root"
 echo ""
-echo -e "Database Name: ${C_GREEN}${DB_NAME}${C_RESET}"
-echo -e "Database User: ${C_GREEN}${DB_USER}${C_RESET} (access from localhost)"
-echo -e "Database Password: ${C_GREEN}${DB_PASS}${C_RESET}"
-echo -e "MariaDB Root Password (for server management): ${C_YELLOW}${MARIADB_ROOT_PASS}${C_RESET}"
+echo -e "Database Name: ${DB_NAME}"
+echo -e "Database User: ${DB_USER} (access from localhost)"
+echo -e "Database Password: ${DB_PASS}"
+echo -e "MariaDB Root Password: ${MARIADB_ROOT_PASS}"
 echo "--------------------------------------------------"
-echo -e "Installation Log saved to: ${C_GREEN}${LOG_FILE}${C_RESET}"
+echo -e "Installation Log saved to: ${LOG_FILE}"
