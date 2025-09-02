@@ -206,8 +206,15 @@ mysql -u root -p'pass'
 * **نحوه استفاده:** بعد از ورود به محیط MariaDB، این دستور را اجرا کنید.
 * **چه زمانی استفاده می‌شود؟** این بهترین دستور برای شروع عیب‌یابی مشکلات `Access denied` است. ستون `host` به شما می‌گوید که هر کاربر از چه IP یا هاستی اجازه اتصال دارد (`localhost` یعنی فقط از داخل سرور، `%` یعنی از هر جایی).
 
----
-**`RENAME USER 'root'@'localhost' TO 'root'@'%';`**
+```bash
+**`RENAME USER 'root'@'localhost' TO 'root'@'%';
+```
+
+```bash
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'YOUR_ROOT_PASSWORD' WITH GRANT OPTION;
+FLUSH PRIVILEGES;
+exit;
+```
 
 * **هدف:** تغییر هاست مجاز برای یک کاربر. این دستور به کاربر `root` که قبلاً فقط از `localhost` اجازه اتصال داشت، اجازه می‌دهد تا از هر IP (`%`) متصل شود.
 * **نحوه استفاده:** این دستور مدرن و صحیح برای تغییر هاست کاربر است. دستور قدیمی `UPDATE mysql.user` در نسخه‌های جدید MariaDB خطا می‌دهد.
